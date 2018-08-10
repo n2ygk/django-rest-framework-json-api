@@ -1,34 +1,22 @@
 from rest_framework.exceptions import ValidationError
-from rest_framework.filters import BaseFilterBackend, OrderingFilter, SearchFilter
+from rest_framework.filters import BaseFilterBackend, OrderingFilter
 from rest_framework.settings import api_settings
 
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework_json_api.utils import format_value
+
+from .settings import json_api_settings
+from .utils import format_value
 
 
-class JSONAPIFilterMixin(object):
+class JSONAPIQueryValidationFilter(BaseFilterBackend):
     """
-    class to share data among filtering backends
-    """
-    # search_param is used both in SearchFilter and JSONAPIFilterFilter
-    search_param = api_settings.SEARCH_PARAM
+    A backend filter that performs strict validation of query parameters for jsonapi spec
+    conformance and raises a 400 error if non-conforming usage is found.
 
-    def __init__(self):
-        self.filter_keys = []
-
-
-class JSONAPIQueryValidationFilter(JSONAPIFilterMixin, BaseFilterBackend):
-    """
-    A backend filter that validates query parameters for jsonapi spec conformance and raises a 400
-    error rather than silently ignoring unknown parameters or incorrect usage.
-
-    set `allow_duplicate_filters = True` if you are OK with the same filter being repeated.
-
-    TODO: For jsonapi error object compliance, must set jsonapi errors "parameter" for the
+    TODO: For jsonapi error object conformance, must set jsonapi errors "parameter" for the
           ValidationError. This requires extending DRF/DJA Exceptions.
     """
-    jsonapi_query_keywords = ('sort', 'filter', 'fields', 'page', 'include')
-    jsonapi_allow_duplicated_filters = False
+    query_keywords = ('sort', 'filter', 'fields', 'page', 'include')
 
     def validate_query_params(self, request):
         """
@@ -44,11 +32,11 @@ class JSONAPIQueryValidationFilter(JSONAPIFilterMixin, BaseFilterBackend):
                 keyword = qp[:bracket]
             else:
                 keyword = qp
-            if keyword not in self.jsonapi_query_keywords:
+            if keyword not in self.query_keywords:
                 raise ValidationError(
                     'invalid query parameter: {}'.format(keyword))
-            if not self.jsonapi_allow_duplicated_filters \
-                    and len(request.query_params.getlist(qp)) > 1:
+            # catch errors like `?page[size]=3&page[size]=4` or `?sort=a,b,c&sort=d,e,f`:
+            if len(request.query_params.getlist(qp)) > 1:
                 raise ValidationError(
                     'repeated query parameter not allowed: {}'.format(qp))
 
@@ -57,46 +45,39 @@ class JSONAPIQueryValidationFilter(JSONAPIFilterMixin, BaseFilterBackend):
         return queryset
 
 
-class JSONAPIOrderingFilter(JSONAPIFilterMixin, OrderingFilter):
+class JSONAPIOrderingFilter(OrderingFilter):
     """
     The standard rest_framework.filters.OrderingFilter works mostly fine as is,
-    but with .ordering_param = 'sort'.
+    but with .ordering_param = 'sort' and some strict conformance checking.
 
     This implements http://jsonapi.org/format/#fetching-sorting and raises 400
-    if any sort field is invalid.
+    if any sort field is invalid. If you prefer *not* to report 400 errors for invalid
+    sort fields, just use OrderingFilter with `ordering_param='sort'`
+
+    TODO: Add sorting based upon relationship attributes (sort=relname.fieldname)
     """
-    jsonapi_ignore_bad_sort_fields = False
     ordering_param = 'sort'
 
     def remove_invalid_fields(self, queryset, fields, view, request):
         """
-        override remove_invalid_fields to raise a 400 exception instead of silently removing them.
+        overrides remove_invalid_fields to raise a 400 exception instead of silently removing them.
+        set `ignore_bad_sort_fields = True` to not do this validation.
         """
         valid_fields = [item[0] for item
                         in self.get_valid_fields(queryset, view, {'request': request})]
         bad_terms = [term for term
                      in fields if format_value(term.lstrip('-'), "underscore") not in valid_fields]
-        if bad_terms and not self.jsonapi_ignore_bad_sort_fields:
+        if bad_terms:
             raise ValidationError(
                 'invalid sort parameter{}: {}'.format(('s' if len(bad_terms) > 1 else ''),
                                                       ','.join(bad_terms)))
+
         return super(JSONAPIOrderingFilter, self).remove_invalid_fields(queryset,
                                                                         fields, view, request)
 
 
-class JSONAPISearchFilter(JSONAPIFilterMixin, SearchFilter):
-    """
-    The (multi-field) rest_framework.filters.SearchFilter works just fine as is, but with a
-    defined `filter[NAME]` such as `filter[all]` or `filter[_all_]` or something like that.
 
-    This is not part of the jsonapi standard per-se, other than the requirement to use the `filter`
-    keyword: This is an optional implementation of a style of filtering in which a single filter
-    can implement a keyword search across multiple fields of a model as implemented by SearchFilter.
-    """
-    pass
-
-
-class JSONAPIFilterFilter(JSONAPIFilterMixin, DjangoFilterBackend):
+class JSONAPIFilterFilter(DjangoFilterBackend):
     """
     Overrides django_filters.rest_framework.DjangoFilterBackend to use `filter[field]` query
     parameter.
@@ -121,8 +102,12 @@ class JSONAPIFilterFilter(JSONAPIFilterMixin, DjangoFilterBackend):
 
     It is meaningless to intersect the same filter: ?filter[foo]=123&filter[foo]=abc will
     always yield nothing so detect this repeated appearance of the same filter in
-    JSONAPIQueryValidationFilter and complain there.
+    JSONAPIQueryValidationFilter, above, and complain there.
     """
+    search_param = api_settings.SEARCH_PARAM
+
+    def __init__(self):
+        self.filter_keys = []  # TODO: why do I need this?
 
     def get_filterset(self, request, queryset, view):
         """
@@ -135,7 +120,6 @@ class JSONAPIFilterFilter(JSONAPIFilterMixin, DjangoFilterBackend):
         raises 400 rather than ignoring "bad" query parameters.
         """
         fs = super(JSONAPIFilterFilter, self).get_filterset(request, queryset, view)
-        # TODO: change to have option to silently ignore bad filters
         for k in self.filter_keys:
             if k not in fs.filters:
                 raise ValidationError("invalid filter[{}]".format(k))
