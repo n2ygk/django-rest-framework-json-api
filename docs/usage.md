@@ -36,8 +36,9 @@ REST_FRAMEWORK = {
         'rest_framework_json_api.backends.JSONAPIQueryValidationFilter',
         'rest_framework_json_api.backends.JSONAPIOrderingFilter',
         'rest_framework_json_api.backends.JSONAPIFilterFilter',
-        'rest_framework_json_api.backends.JSONAPISearchFilter',
+        'rest_framework.filters.SearchFilter',
     ),
+    'SEARCH_PARAM': 'filter[search]',
     'TEST_REQUEST_RENDERER_CLASSES': (
         'rest_framework_json_api.renderers.JSONRenderer',
     ),
@@ -96,22 +97,23 @@ class MyLimitPagination(JsonApiLimitOffsetPagination):
 ### Filter Backends
 
 [JSON:API](http://jsonapi.org) specifies certain query parameter names but not always the meaning of a particular name.
-The following four filter backends extend existing common filter backends found in DRF and the `django-filter` package
+The following filter backends extend existing common filter backends found in DRF and the `django-filter` package
 to comply with the required parts of the [spec](http://jsonapi.org/format) and offer up a Django-flavored
-implementation of parts that are left undefined (like what a `filter` looks like.) The four backends may be
+implementation of parts that are left undefined (like what a `filter` looks like.) The backends may be
 [configured](http://django-rest-framework.readthedocs.io/en/latest/api-guide/filtering/#setting-filter-backends)
-either as `REST_FRAMWORK['DEFAULT_FILTER_BACKENDS']` or as a list of `filter_backends`. Following is an example
-with explanations of each filter backend after it:
+either as `REST_FRAMWORK['DEFAULT_FILTER_BACKENDS']` or as a list of `filter_backends` for a View. Following is an 
+example with explanations of each filter backend after it:
 
 **TODO: change to match example model**
 
 ```python
-from rest_framework_json_api.backends import *
+from rest_framework_json_api.backends import JSONAPIQueryValidationFilter, JSONAPIOrderingFilter, JSONAPIFilterFilter
+from rest_framework.filters import SearchFilter
 
 class LineItemViewSet(viewsets.ModelViewSet):
     queryset = LineItem.objects
     serializer_class = LineItemSerializer
-    filter_backends = (JSONAPIQueryValidationFilter, JSONAPIOrderingFilter, JSONAPIFilterFilter, JSONAPISearchFilter,)
+    filter_backends = (JSONAPIQueryValidationFilter, JSONAPIOrderingFilter, JSONAPIFilterFilter, SearchFilter,)
     filterset_fields = {
         'subject_area_code': ('exact', 'gt', 'lt',),
         'course_name': ('exact', 'icontains',),
@@ -125,16 +127,10 @@ class LineItemViewSet(viewsets.ModelViewSet):
 ``` 
 
 #### `JSONAPIQueryValidationFilter`
-`JSONAPIQueryValidationFilter` checks the query parameters to make sure they are all valid per JSON:API
-and returns a `400 Bad Request` if they are not. By default it also flags duplicated `filter` parameters (it is
-generally meaningless to have two of the same filter as filters are ANDed together). You can override these
-attributes if you need to step outside the spec:
+`JSONAPIQueryValidationFilter` performs strict validation of query parameters for JSON:API spec
+conformance and raises a `400 Bad Request` error if non-conforming usage is found.
 
-**TODO: check this**
-```python
-jsonapi_query_keywords = ('sort', 'filter', 'fields', 'page', 'include')
-jsonapi_allow_duplicated_filters = False
-```
+If you don't want strict conformance checking, don't use this backend filter.
 
 If, for example, your client sends in a query with an invalid parameter (`?sort` misspelled as `?snort`),
 this error will be returned:
@@ -152,7 +148,8 @@ this error will be returned:
 }
 ```
 
-And if two conflicting filters are provided (`?filter[foo]=123&filter[foo]=456`), this error:
+If conflicting (duplicated) parameters are provided (for example, `?filter[foo]=123&filter[foo]=456`), an
+error like this will be returned:
 ```json
 {
     "errors": [
@@ -167,20 +164,13 @@ And if two conflicting filters are provided (`?filter[foo]=123&filter[foo]=456`)
 }
 ```
 
-If you would rather have your API silently ignore incorrect parameters, simply leave this filter backend out
-and set `jsonapi_allow_duplicated_filters = True`.
-
 #### `JSONAPIOrderingFilter`
-`JSONAPIOrderingFilter` implements the [JSON:API `sort`](http://jsonapi.org/format/#fetching-sorting) just uses
+`JSONAPIOrderingFilter` implements the [JSON:API `sort`](http://jsonapi.org/format/#fetching-sorting) and uses
 DRF's [ordering filter](http://django-rest-framework.readthedocs.io/en/latest/api-guide/filtering/#orderingfilter).
-You can use a non-standard parameter name isntead of `sort` by setting `ordering_param`:
-```json
-ordering_param = 'sort'
-jsonapi_ignore_bad_sort_fields = False
-```
+
 Per the JSON:API, "If the server does not support sorting as specified in the query parameter `sort`,
-it **MUST** return `400 Bad Request`." This error looks like ()for `?sort=`abc,foo,def` where `foo` is a valid
-field name and the other two are not):
+it **MUST** return `400 Bad Request`." For example, for `?sort=`abc,foo,def` where `foo` is a valid
+field name and the other two are not valid:
 ```json
 {
     "errors": [
@@ -194,21 +184,34 @@ field name and the other two are not):
     ]
 }
 ```
-If you want to silently ignore bad sort fields, set `jsonapi_ignore_bad_sort_fields = True`
+
+If you want to silently ignore bad sort fields, just use `rest_framework.filters.OrderingFilter` and set
+`ordering_param` to `sort`.
 
 #### `JSONAPIFilterFilter`
 `JSONAPIFilterFilter` exploits the power of the [django-filter DjangoFilterBackend](https://django-filter.readthedocs.io/en/latest/guide/rest_framework.html).
-The JSON:API spec explicitly does not define the syntax or meaning of a filter beyond requiring use of the `filter`
-query parameter. This filter implementation is "just a suggestion", but hopefully a useful one with these features:
-- A resource field exact match test: `?filter[foo]=123`
-- Apply other [relational operators](https://docs.djangoproject.com/en/2.0/ref/models/querysets/#field-lookups):
-`?filter[foo.icontains]=bar or ?filter[count.gt]=7...`
-- Membership in a list of values (OR): `?filter[foo]=abc,123,zzz` (foo in ['abc','123','zzz'])
-- Filters can be combined for intersection (AND): `?filter[foo]=123&filter[bar]=abc,123,zzz&filter[...]`
-- Chaining related resource fields for above filters: `?filter[foo.rel.baz]=123` (where `rel` is the relationship name)
+The JSON:API spec does not describe a particular filtering implementation, other than 
+the requirement to use the `filter` keyword.
+
+This is an optional implementation of style of filtering in which each filter is an ORM
+expression as implemented by DjangoFilterBackend and seems to be in alignment with an
+interpretation of [JSON:API recommendations](http://jsonapi.org/recommendations/#filtering), including relationship
+chaining.
+
+Filters can be:
+    - A resource field equality test:
+        `?filter[foo]=123`
+    - Apply other relational operators:
+        `?filter[foo.in]=bar,baz or ?filter[count.ge]=7...`
+    - Membership in a list of values (OR):
+        `?filter[foo]=abc,123,zzz (foo in ['abc','123','zzz'])`
+    - Filters can be combined for intersection (AND):
+        `?filter[foo]=123&filter[bar]=abc,123,zzz&filter[...]`
+    - A related resource field for above tests:
+        `?filter[foo.rel.baz]=123 (where `rel` is the relationship name)`
 
 Both the usual Django ORM double-underscore notation (`foo__bar__eq`) and a more JSON:API-flavored dotted
-notation (`foo.bar.eq`) are supported.
+relationship path notation (`foo.bar.eq`) are supported.
 
 See the [django-filter](https://django-filter.readthedocs.io/en/latest/guide/rest_framework.html) documentation
 for more details. See an example using a dictionary of filter definitions [above](#filter-backends).
@@ -226,15 +229,6 @@ A `400 Bad Request` like the following is returned if the requested filter is no
         }
     ]
 }
-```
-
-#### `JSONAPISearchFilter`
-`JSONAPISearchFilter` implements keyword searching across multiple text fields using 
-[`rest_framework.filters.SearchFilter`](http://django-rest-framework.readthedocs.io/en/latest/api-guide/filtering/#searchfilter)
-You configure this filter with `search_fields` and name the filter with `search_param`. For lack of a better name,
-the default is:
-```python
-search_param = 'filter[all]'
 ```
 
 ### Performance Testing

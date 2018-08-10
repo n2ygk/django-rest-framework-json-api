@@ -176,8 +176,9 @@ override ``settings.REST_FRAMEWORK``
             'rest_framework_json_api.backends.JSONAPIQueryValidationFilter',
             'rest_framework_json_api.backends.JSONAPIOrderingFilter',
             'rest_framework_json_api.backends.JSONAPIFilterFilter',
-            'rest_framework_json_api.backends.JSONAPISearchFilter',
+            'rest_framework.filters.SearchFilter',
         ),
+        'SEARCH_PARAM': 'filter[search]',
         'TEST_REQUEST_RENDERER_CLASSES': (
             'rest_framework_json_api.renderers.JSONRenderer',
         ),
