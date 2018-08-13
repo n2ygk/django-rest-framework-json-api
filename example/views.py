@@ -1,6 +1,14 @@
 import rest_framework.parsers
 import rest_framework.renderers
 from rest_framework import exceptions
+from rest_framework.filters import SearchFilter
+
+from rest_framework_json_api.backends import (
+    JSONAPIDjangoFilter,
+    JSONAPIOrderingFilter,
+    JSONAPIQueryValidationFilter
+)
+from rest_framework_json_api.pagination import JsonApiPageNumberPagination
 
 import rest_framework_json_api.metadata
 import rest_framework_json_api.parsers
@@ -90,6 +98,41 @@ class NoPagination(PageNumberPagination):
 
 class NonPaginatedEntryViewSet(EntryViewSet):
     pagination_class = NoPagination
+
+
+# following are for test_backends tests
+class BackendSearchParamMixin(object):
+    search_param = 'filter[search]'
+
+
+class BackendJSONAPIDjangoFilter(BackendSearchParamMixin, JSONAPIDjangoFilter):
+    pass
+
+
+class BackendSearchFilter(BackendSearchParamMixin, SearchFilter):
+    pass
+
+
+class BackendPagination(JsonApiPageNumberPagination):
+    page_size = 100
+
+
+class BackendEntryViewSet(ModelViewSet):
+    queryset = Entry.objects.all()
+    serializer_class = EntrySerializer
+    filter_backends = (JSONAPIQueryValidationFilter, BackendSearchFilter,
+                       BackendJSONAPIDjangoFilter, JSONAPIOrderingFilter)
+    pagination_class = BackendPagination
+    rels = ('exact', 'iexact', 'icontains', 'gt', 'lt', 'in', 'regex')
+    filterset_fields = {
+        'id': ('exact', 'in'),
+        'headline': rels,
+        'body_text': rels,
+        'blog__name': rels,
+        'blog__tagline': rels,
+    }
+    search_fields = ('headline', 'body_text', 'id', 'blog__tagline', 'blog__name')
+# end of test_backends tests
 
 
 class AuthorViewSet(ModelViewSet):

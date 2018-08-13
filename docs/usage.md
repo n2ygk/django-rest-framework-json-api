@@ -35,7 +35,7 @@ REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': (
         'rest_framework_json_api.backends.JSONAPIQueryValidationFilter',
         'rest_framework_json_api.backends.JSONAPIOrderingFilter',
-        'rest_framework_json_api.backends.JSONAPIFilterFilter',
+        'rest_framework_json_api.backends.JSONAPIDjangoFilter',
         'rest_framework.filters.SearchFilter',
     ),
     'SEARCH_PARAM': 'filter[search]',
@@ -95,6 +95,8 @@ class MyLimitPagination(JsonApiLimitOffsetPagination):
 ```
 
 ### Filter Backends
+
+**WARNING:** These Filter Backends are currently only supported for Python 3 with django-filter >= 2.0.
 
 [JSON:API](http://jsonapi.org) specifies certain query parameter names but not always the meaning of a particular name.
 The following filter backends extend existing common filter backends found in DRF and the `django-filter` package
@@ -188,8 +190,8 @@ field name and the other two are not valid:
 If you want to silently ignore bad sort fields, just use `rest_framework.filters.OrderingFilter` and set
 `ordering_param` to `sort`.
 
-#### `JSONAPIFilterFilter`
-`JSONAPIFilterFilter` exploits the power of the [django-filter DjangoFilterBackend](https://django-filter.readthedocs.io/en/latest/guide/rest_framework.html).
+#### `JSONAPIDjangoFilter`
+`JSONAPIDjangoFilter` exploits the power of the [django-filter DjangoFilterBackend](https://django-filter.readthedocs.io/en/latest/guide/rest_framework.html).
 The JSON:API spec does not describe a particular filtering implementation, other than 
 the requirement to use the `filter` keyword.
 

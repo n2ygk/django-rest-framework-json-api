@@ -6,8 +6,9 @@
 * Add optional [jsonapi-style](http://jsonapi.org/format/) filter backends. See [usage docs](docs/usage.md#filter-backends)
   * query parameter validation -- raises 400 errors rather than silently ignoring "bad" parameters
   * sort - based on `rest_framework.filters.OrderingFilter`
-  * keyword filter across multiple fields based on `rest_framework.filters.SearchFilter`
+  * keyword filter across multiple fields using `rest_framework.filters.SearchFilter` (documentation)
   * field-level filter based on `django_filters.rest_framework.DjangoFilterBackend`
+  * **NOTE** that this code does not currently work with Python2.7
 
 
 

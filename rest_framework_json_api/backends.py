@@ -1,10 +1,8 @@
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.exceptions import ValidationError
 from rest_framework.filters import BaseFilterBackend, OrderingFilter
 from rest_framework.settings import api_settings
 
-from django_filters.rest_framework import DjangoFilterBackend
-
-from .settings import json_api_settings
 from .utils import format_value
 
 
@@ -76,11 +74,9 @@ class JSONAPIOrderingFilter(OrderingFilter):
                                                                         fields, view, request)
 
 
-
-class JSONAPIFilterFilter(DjangoFilterBackend):
+class JSONAPIDjangoFilter(DjangoFilterBackend):
     """
-    Overrides django_filters.rest_framework.DjangoFilterBackend to use `filter[field]` query
-    parameter.
+    A Django-style ORM filter implementation, using `django-filter`.
 
     This is not part of the jsonapi standard per-se, other than the requirement to use the `filter`
     keyword: This is an optional implementation of style of filtering in which each filter is an ORM
@@ -119,7 +115,7 @@ class JSONAPIFilterFilter(DjangoFilterBackend):
         http://jsonapi.org/format/#query-parameters. In general, unlike django/DRF, jsonapi
         raises 400 rather than ignoring "bad" query parameters.
         """
-        fs = super(JSONAPIFilterFilter, self).get_filterset(request, queryset, view)
+        fs = super(JSONAPIDjangoFilter, self).get_filterset(request, queryset, view)
         for k in self.filter_keys:
             if k not in fs.filters:
                 raise ValidationError("invalid filter[{}]".format(k))

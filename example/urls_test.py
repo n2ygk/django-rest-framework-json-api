@@ -12,6 +12,7 @@ from example.views import (
     CompanyViewset,
     EntryRelationshipView,
     EntryViewSet,
+    BackendEntryViewSet,
     NonPaginatedEntryViewSet,
     ProjectViewset
 )
@@ -21,6 +22,7 @@ router = routers.DefaultRouter(trailing_slash=False)
 router.register(r'blogs', BlogViewSet)
 router.register(r'entries', EntryViewSet)
 router.register(r'nopage-entries', NonPaginatedEntryViewSet, 'nopage-entry')
+router.register(r'backend-entries', BackendEntryViewSet, 'backend-entry')
 router.register(r'authors', AuthorViewSet)
 router.register(r'comments', CommentViewSet)
 router.register(r'companies', CompanyViewset)
