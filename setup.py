@@ -101,6 +101,7 @@ setup(
         'djangorestframework>=3.6.3',
         'django>=1.11',
         'six',
+        'django-filter'
     ],
     setup_requires=pytest_runner + sphinx + wheel,
     tests_require=[

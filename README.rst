@@ -175,7 +175,7 @@ override ``settings.REST_FRAMEWORK``
         'DEFAULT_FILTER_BACKENDS': (
             'rest_framework_json_api.backends.JSONAPIQueryValidationFilter',
             'rest_framework_json_api.backends.JSONAPIOrderingFilter',
-            'rest_framework_json_api.backends.JSONAPIFilterFilter',
+            'rest_framework_json_api.backends.JSONAPIDjangoFilter',
             'rest_framework.filters.SearchFilter',
         ),
         'SEARCH_PARAM': 'filter[search]',
