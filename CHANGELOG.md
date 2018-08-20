@@ -10,8 +10,6 @@
   * field-level filter based on `django_filters.rest_framework.DjangoFilterBackend`
   * **NOTE** that this code does not currently work with Python2.7
 
-
-
 v2.5.0 - Released July 11, 2018
 
 * Add new pagination classes based on JSON:API query parameter *recommendations*:
