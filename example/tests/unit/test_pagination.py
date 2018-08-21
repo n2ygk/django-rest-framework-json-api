@@ -85,6 +85,11 @@ class TestLimitOffset:
         assert len(record) == 1
         assert 'LimitOffsetPagination' in str(record[0].message)
 
+        with pytest.warns(DeprecationWarning) as record:
+            pagination.JsonApiLimitOffsetPagination()
+        assert len(record) == 1
+        assert 'JsonApiLimitOffsetPagination' in str(record[0].message)
+
 
 # TODO: This test fails under py27 but it's not clear why so just leave it out for now.
 @pytest.mark.xfail((sys.version_info.major, sys.version_info.minor) == (2, 7),
@@ -99,3 +104,8 @@ class TestPageNumber:
             pagination.PageNumberPagination()
         assert len(record) == 1
         assert 'PageNumberPagination' in str(record[0].message)
+
+        with pytest.warns(DeprecationWarning) as record:
+            pagination.JsonApiPageNumberPagination()
+        assert len(record) == 1
+        assert 'JsonApiPageNumberPagination' in str(record[0].message)
