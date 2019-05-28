@@ -185,11 +185,13 @@ class RelatedMixin(object):
             except AttributeError:
                 raise NotFound
 
+
 class ValidHTTPMethodsMixin(object):
     """
     JSONAPI does not define methods like PUT and TRACE
     """
     http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
+
 
 class ModelViewSet(AutoPrefetchMixin,
                    PrefetchForIncludesHelperMixin,
