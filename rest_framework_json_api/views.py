@@ -185,10 +185,16 @@ class RelatedMixin(object):
             except AttributeError:
                 raise NotFound
 
+class ValidHTTPMethodsMixin(object):
+    """
+    JSONAPI does not define methods like PUT and TRACE
+    """
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
 
 class ModelViewSet(AutoPrefetchMixin,
                    PrefetchForIncludesHelperMixin,
                    RelatedMixin,
+                   ValidHTTPMethodsMixin,
                    viewsets.ModelViewSet):
     pass
 
@@ -196,11 +202,12 @@ class ModelViewSet(AutoPrefetchMixin,
 class ReadOnlyModelViewSet(AutoPrefetchMixin,
                            PrefetchForIncludesHelperMixin,
                            RelatedMixin,
+                           ValidHTTPMethodsMixin,
                            viewsets.ReadOnlyModelViewSet):
     pass
 
 
-class RelationshipView(generics.GenericAPIView):
+class RelationshipView(ValidHTTPMethodsMixin, generics.GenericAPIView):
     serializer_class = ResourceIdentifierObjectSerializer
     self_link_view_name = None
     related_link_view_name = None
