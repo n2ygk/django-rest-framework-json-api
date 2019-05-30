@@ -186,34 +186,26 @@ class RelatedMixin(object):
                 raise NotFound
 
 
-class ValidHTTPMethodsMixin(object):
-    """
-    JSONAPI does not define methods like PUT and TRACE
-    """
-    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
-
-
 class ModelViewSet(AutoPrefetchMixin,
                    PrefetchForIncludesHelperMixin,
                    RelatedMixin,
-                   ValidHTTPMethodsMixin,
                    viewsets.ModelViewSet):
-    pass
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
 
 
 class ReadOnlyModelViewSet(AutoPrefetchMixin,
                            PrefetchForIncludesHelperMixin,
                            RelatedMixin,
-                           ValidHTTPMethodsMixin,
                            viewsets.ReadOnlyModelViewSet):
-    pass
+    http_method_names = ['get', 'head', 'options']
 
 
-class RelationshipView(ValidHTTPMethodsMixin, generics.GenericAPIView):
+class RelationshipView(generics.GenericAPIView):
     serializer_class = ResourceIdentifierObjectSerializer
     self_link_view_name = None
     related_link_view_name = None
     field_name_mapping = {}
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
 
     def get_serializer_class(self):
         if getattr(self, 'action', False) is None:

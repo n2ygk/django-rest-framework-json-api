@@ -178,7 +178,6 @@ def test_polymorphism_relations_update(single_company, research_project_factory,
 
 
 def test_polymorphism_relations_put_405(single_company, research_project_factory, client):
-    # the preceding had been incorrectly using PUT instead of PATCH. This confirms PUT now fails.
     response = client.get(reverse("company-detail", kwargs={'pk': single_company.pk}))
     content = response.json()
     assert content["data"]["relationships"]["currentProject"]["data"]["type"] == "artProjects"
