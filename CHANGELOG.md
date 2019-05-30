@@ -14,6 +14,11 @@ any parts of the framework not mentioned in the documentation should generally b
 
 * Add support for Django 2.2
 
+### Changed
+
+* Allow to define `select_related` per include using [select_for_includes](https://django-rest-framework-json-api.readthedocs.io/en/stable/usage.html#performance-improvements)
+* Reduce number of queries to calculate includes by using `select_related` when possible
+
 ### Fixed
 
 * Avoid exception when trying to include skipped relationship
@@ -22,6 +27,11 @@ any parts of the framework not mentioned in the documentation should generally b
 * Allow OPTIONS request to be used on RelationshipView.
 * Remove non-JSONAPI methods (PUT and TRACE) from ModelViewSet and RelationshipView. This is a **BREAKING CHANGE** if
   your clients are incorrectly using PUT instead of PATCH.
+
+### Deprecated
+
+* Deprecate `PrefetchForIncludesHelperMixin` use `PreloadIncludesMixin` instead
+* Deprecate `AutoPrefetchMixin` use `AutoPreloadMixin` instead
 
 ## [2.7.0] - 2019-01-14
 
