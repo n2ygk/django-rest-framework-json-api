@@ -12,7 +12,12 @@ from rest_framework_json_api.django_filters import DjangoFilterBackend
 from rest_framework_json_api.filters import OrderingFilter, QueryParameterValidationFilter
 from rest_framework_json_api.pagination import JsonApiPageNumberPagination
 from rest_framework_json_api.utils import format_drf_errors
-from rest_framework_json_api.views import ModelViewSet, PreloadIncludesMixin, RelationshipView
+from rest_framework_json_api.views import (
+    ModelViewSet,
+    PreloadIncludesMixin,
+    RelatedMixin,
+    RelationshipView
+)
 
 from example.models import Author, Blog, Comment, Company, Entry, Project, ProjectType
 from example.serializers import (
@@ -26,6 +31,9 @@ from example.serializers import (
     ProjectSerializer,
     ProjectTypeSerializer
 )
+
+# AutoPreloadMixin
+
 
 HTTP_422_UNPROCESSABLE_ENTITY = 422
 
@@ -200,7 +208,18 @@ class CommentViewSet(ModelViewSet):
         return super(CommentViewSet, self).get_queryset()
 
 
-class CompanyViewset(PreloadIncludesMixin, viewsets.ModelViewSet):
+class TestModelViewSet(PreloadIncludesMixin, RelatedMixin, viewsets.ModelViewSet):
+    """
+    TODO: this is a temporary workaround since AutoPreloadMixin and PreloadIncludesMixin
+    conflict with each other for polymorphic viewsets.
+    See https://github.com/django-json-api/django-rest-framework-json-api/pull/643
+    DJA's views.ModelViewSet has both AutoPreloadMixin and PreloadIncludesMixin.
+    """
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
+
+
+# class CompanyViewset(PreloadIncludesMixin, viewsets.ModelViewSet):
+class CompanyViewset(TestModelViewSet):
     queryset = Company.objects.all()
     serializer_class = CompanySerializer
     prefetch_for_includes = {
