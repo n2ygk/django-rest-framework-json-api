@@ -1,0 +1,5 @@
+[run]
+omit =
+     .tox/*
+     example/tests/snapshots/*
+     example/migrations/*
